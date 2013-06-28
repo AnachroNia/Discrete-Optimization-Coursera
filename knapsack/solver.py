@@ -1,11 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import numpy as np
+from numba import jit,uint32,int32
 
-def build_opt_table(j,k,v,w):
-    opt_table = np.zeros((j+1,k+1))
-    for j in xrange(j+1):
-        for k in xrange(k+1):
+def build_opt_table(opt_table,v,w):
+    j = opt_table.shape[0]-1
+    k = opt_table.shape[1]-1
+    for j in range(j+1):
+        for k in range(k+1):
             if j == 0:
                 opt_table[j,k] = 0
             elif w[j-1] <= k:
@@ -17,7 +19,6 @@ def build_opt_table(j,k,v,w):
 def traceback(opt_table,j,k,w):
     taken = []
     for j in reversed(xrange(j+1)):
-        print j
         if opt_table[j,k] == opt_table[j-1,k]:
             taken.append(0)
         else:
@@ -34,30 +35,31 @@ def solveIt(inputData):
     lines = inputData.split('\n')
 
     firstLine = lines[0].split()
-    items = int(firstLine[0])
-    capacity = int(firstLine[1])
+    j = int(firstLine[0])
+    k = int(firstLine[1])
 
-    values = []
-    weights = []
+    v = []
+    w = []
 
-    for i in range(1, items+1):
+    for i in range(1, j+1):
         line = lines[i]
         parts = line.split()
 
-        values.append(int(parts[0]))
-        weights.append(int(parts[1]))
+        v.append(int(parts[0]))
+        w.append(int(parts[1]))
 
-    items = len(values)
-
+    v = np.array(v,dtype=np.int32)
+    w = np.array(w,dtype=np.int32)
+    opt_table = np.zeros((j+1,k+1),dtype=np.int32)
+    build_opt_table_fast = jit(int32[:,:](int32[:,:],int32[:],int32[:]))(build_opt_table)
+    opt_table = build_opt_table_fast(opt_table,v,w)
+    value = int(opt_table[j,k])
+    taken = traceback(opt_table,j,k,w)
     # a trivial greedy algorithm for filling the knapsack
     # it takes items in-order until the knapsack is full
-    value = 0
-    weight = 0
-    taken = []
-
-    opt_table = build_opt_table(items,capacity,values,weights)
-    value = int(opt_table[items,capacity])
-    taken = traceback(opt_table,items,capacity,weights)
+    # value = 0
+    # weight = 0
+    # taken = []
     # for i in range(0, items):
     #     if weight + weights[i] <= capacity:
     #         taken.append(1)
